@@ -8,7 +8,11 @@ const router = Router();
 router.get(
   "/notes",
   async (req: Request, res: Response, next: NextFunction) => {
-    const notes = await prisma.note.findMany();
+    const notes = await prisma.note.findMany({
+      include: {
+        tags: true,
+      },
+    });
     res.json(bigIntToString(notes));
   }
 );
@@ -18,6 +22,10 @@ router.get("/notes/:id", async (req: Request, res: Response) => {
   try {
     const note = await prisma.note.findUnique({
       where: { id: BigInt(id) },
+      include: {
+        tags: true,
+        
+      },
     });
     if (!note) {
       console.log("Note not found");
@@ -32,10 +40,32 @@ router.get("/notes/:id", async (req: Request, res: Response) => {
 router.post(
   "/notes",
   async (req: Request, res: Response, next: NextFunction) => {
-    const { title, content } = await req.body;
-    console.log("LOG", title, content);
-    const note = await prisma.note.create({ data: { title, content } });
-    res.json(bigIntToString(note));
+    try {
+      const notes = Array.isArray(req.body) ? req.body : [req.body];
+
+      // Create notes one by one to handle tag connections
+      const createdNotes = await Promise.all(
+        notes.map(({ title, content, tags = [] }) =>
+          prisma.note.create({
+            data: {
+              title,
+              content,
+              tags: {
+                connect: tags.map((tag: any) => ({ id: BigInt(tag.id) })),
+              },
+            },
+            include: {
+              tags: true,
+            },
+          })
+        )
+      );
+
+      res.json(bigIntToString(createdNotes));
+    } catch (error) {
+      console.error("Error creating notes:", error);
+      res.status(500).json({ error: "Failed to create notes" });
+    }
   }
 );
 
@@ -152,6 +182,7 @@ router.get("/tags", async (req: Request, res: Response, next: NextFunction) => {
 const bigIntToString = (data: any): any => {
   if (data === null || data === undefined) return data;
   if (typeof data === "bigint") return data.toString();
+  if (data instanceof Date) return data.toISOString();
   if (Array.isArray(data)) return data.map(bigIntToString);
   if (typeof data === "object") {
     return Object.fromEntries(
