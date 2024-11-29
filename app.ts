@@ -2,6 +2,10 @@ import { Request, Response } from "express";
 const express = require("express");
 require("dotenv").config();
 import cors from "cors";
+import { isAuthenticated } from "./auth/auth.middleware";
+import authRouter from "./auth/auth.routes";
+import publicRouter from "./router/public.routes";
+import privateRouter from "./router/private.routes";
 
 const app = express();
 
@@ -14,8 +18,9 @@ app.use(
 );
 
 app.use(express.json());
-const index = require("./router/index.routes");
-app.use("/api", index);
+app.use("/api", publicRouter);
+app.use("/auth", authRouter);
+app.use("/api-private", isAuthenticated, privateRouter);
 
 app.get("/home", (request: Request, response: Response) => {
   console.log(request);

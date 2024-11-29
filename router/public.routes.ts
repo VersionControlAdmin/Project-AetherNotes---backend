@@ -1,18 +1,22 @@
 import express, { Request, Response, NextFunction, Router } from "express";
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
-import { summarizeNote } from "../services/openAi.services";
-
+import { summarizeNote, generateActionPlan } from "../services/openAi.services";
+import { bigIntToString } from "./private.routes";
 const router = Router();
 
 router.get(
   "/notes",
   async (req: Request, res: Response, next: NextFunction) => {
     const notes = await prisma.note.findMany({
+      where: {
+        userId: null,
+      },
       include: {
         tags: true,
       },
     });
+    console.log("notes", notes);
     res.json(bigIntToString(notes));
   }
 );
@@ -20,15 +24,17 @@ router.get(
 router.get("/notes/:id", async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
-    const note = await prisma.note.findUnique({
-      where: { id: BigInt(id) },
+    const note = await prisma.note.findFirst({
+      where: {
+        id: BigInt(id),
+        userId: null,
+      },
       include: {
         tags: true,
-        
       },
     });
     if (!note) {
-      console.log("Note not found");
+      res.status(404).json({ error: "Note not found" });
       return;
     }
     res.json(bigIntToString(note));
@@ -43,13 +49,13 @@ router.post(
     try {
       const notes = Array.isArray(req.body) ? req.body : [req.body];
 
-      // Create notes one by one to handle tag connections
       const createdNotes = await Promise.all(
         notes.map(({ title, content, tags = [] }) =>
           prisma.note.create({
             data: {
               title,
               content,
+              userId: null,
               tags: {
                 connect: tags.map((tag: any) => ({ id: BigInt(tag.id) })),
               },
@@ -73,15 +79,42 @@ router.put(
   "/notes/:id",
   async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params;
-    const { title, content } = req.body;
+    const { title, content, tags } = req.body;
+
     try {
-      const note = await prisma.note.update({
-        where: { id: BigInt(id) },
-        data: { title, content },
+      const noteExists = await prisma.note.findFirst({
+        where: {
+          id: BigInt(id),
+          userId: null,
+        },
       });
-      res.json(bigIntToString(note));
+
+      if (!noteExists) {
+        res.status(404).json({ error: "Note not found or unauthorized" });
+        return;
+      }
+
+      const updatedNote = await prisma.note.update({
+        where: { id: BigInt(id) },
+        data: {
+          ...(title && { title }),
+          ...(content && { content }),
+          tags: tags
+            ? {
+                set: [],
+                connect: tags.map((tag: { id: string }) => ({
+                  id: BigInt(tag.id),
+                })),
+              }
+            : undefined,
+        },
+        include: { tags: true },
+      });
+
+      res.json(bigIntToString(updatedNote));
     } catch (error) {
-      res.status(404).json({ error: "Note not found" });
+      console.error("Error updating note:", error);
+      res.status(500).json({ error: "Failed to update note" });
     }
   }
 );
@@ -91,9 +124,18 @@ router.delete(
   async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params;
     try {
-      await prisma.note.delete({
-        where: { id: BigInt(id) },
+      const result = await prisma.note.deleteMany({
+        where: {
+          id: BigInt(id),
+          userId: null,
+        },
       });
+
+      if (result.count === 0) {
+        res.status(404).json({ error: "Note not found" });
+        return;
+      }
+
       res.status(204).send();
     } catch (error) {
       res.status(404).json({ error: "Note not found" });
@@ -179,17 +221,36 @@ router.get("/tags", async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-const bigIntToString = (data: any): any => {
-  if (data === null || data === undefined) return data;
-  if (typeof data === "bigint") return data.toString();
-  if (data instanceof Date) return data.toISOString();
-  if (Array.isArray(data)) return data.map(bigIntToString);
-  if (typeof data === "object") {
-    return Object.fromEntries(
-      Object.entries(data).map(([k, v]) => [k, bigIntToString(v)])
-    );
-  }
-  return data;
-};
+// Generate action plan from recent public notes
+router.get("/generate-action-plan", async (req: Request, res: Response) => {
+  console.log("Generating public action plan");
 
-module.exports = router;
+  try {
+    // Get the 20 most recent public notes
+    const recentNotes = await prisma.note.findMany({
+      where: {
+        userId: null, // Only get public notes
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 20,
+      include: {
+        tags: true,
+      },
+    });
+
+    if (!recentNotes.length) {
+      res.status(404).json({ error: "No public notes found" });
+      return;
+    }
+
+    const actionPlan = await generateActionPlan(recentNotes);
+    res.json(actionPlan);
+  } catch (error) {
+    console.error("Error generating public action plan:", error);
+    res.status(500).json({ error: "Failed to generate action plan" });
+  }
+});
+
+export default router;
