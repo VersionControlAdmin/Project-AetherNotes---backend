@@ -5,6 +5,13 @@ import { summarizeNote, generateActionPlan } from "../services/openAi.services";
 
 const router = Router();
 
+// Add these interfaces at the top of the file
+interface NoteInput {
+  title: string;
+  content: string;
+  tags?: Array<{ id: string }>;
+}
+
 // Get all notes for logged-in user
 router.get("/notes", async (req: Request, res: Response) => {
   try {
@@ -53,7 +60,7 @@ router.get("/notes/:id", async (req: Request, res: Response) => {
 router.post("/notes", async (req: Request, res: Response) => {
   try {
     const userId = BigInt(req.user!.userId);
-    const notes = Array.isArray(req.body) ? req.body : [req.body];
+    const notes: NoteInput[] = Array.isArray(req.body) ? req.body : [req.body];
 
     const createdNotes = await Promise.all(
       notes.map(({ title, content, tags = [] }) =>
@@ -61,9 +68,9 @@ router.post("/notes", async (req: Request, res: Response) => {
           data: {
             title,
             content,
-            userId: userId, // Associate note with user
+            userId: userId,
             tags: {
-              connect: tags.map((tag: any) => ({ id: BigInt(tag.id) })),
+              connect: tags.map((tag) => ({ id: BigInt(tag.id) })),
             },
           },
           include: {

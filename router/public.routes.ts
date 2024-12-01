@@ -5,6 +5,13 @@ import { summarizeNote, generateActionPlan } from "../services/openAi.services";
 import { bigIntToString } from "./private.routes";
 const router = Router();
 
+// Add these interfaces at the top of the file
+interface NoteInput {
+  title: string;
+  content: string;
+  tags?: Array<{ id: string }>;
+}
+
 router.get(
   "/notes",
   async (req: Request, res: Response, next: NextFunction) => {
@@ -47,7 +54,7 @@ router.post(
   "/notes",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const notes = Array.isArray(req.body) ? req.body : [req.body];
+      const notes: NoteInput[] = Array.isArray(req.body) ? req.body : [req.body];
 
       const createdNotes = await Promise.all(
         notes.map(({ title, content, tags = [] }) =>
@@ -57,7 +64,7 @@ router.post(
               content,
               userId: null,
               tags: {
-                connect: tags.map((tag: any) => ({ id: BigInt(tag.id) })),
+                connect: tags.map((tag) => ({ id: BigInt(tag.id) })),
               },
             },
             include: {
