@@ -8,10 +8,29 @@ import publicRouter from "./router/public.routes";
 import privateRouter from "./router/private.routes";
 
 const app = express();
+const port = process.env.PORT || 3000;
+
+const allowedOrigins = [
+  process.env.ORIGIN_URL,
+  'http://localhost:5173', // Local frontend development
+  'http://localhost:3000'  // Local backend development
+];
 
 app.use(
   cors({
-    origin: process.env.ORIGIN_URL,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.log('Blocked by CORS:', origin);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
@@ -27,4 +46,4 @@ app.get("/home", (request: Request, response: Response) => {
   response.send("<h1>Welcome Ironhacker. :)</h1>");
 });
 
-app.listen(3000, () => console.log("App running on port 3000! "));
+app.listen(port, () => console.log(`App running on port ${port}!`));

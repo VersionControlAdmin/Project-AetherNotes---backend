@@ -1,9 +1,11 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "main": "index.ts",
+  "main": "app.ts",
   "scripts": {
-    "dev": "npx nodemon app.ts"
+    "dev": "npx nodemon app.ts",
+    "build": "tsc",
+    "start": "node dist/app.js"
   },
   "keywords": [],
   "author": "",
@@ -24,5 +26,8 @@
     "@types/cors": "^2.8.17",
     "@types/jsonwebtoken": "^9.0.7",
     "prisma": "^5.22.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
