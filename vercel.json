@@ -1,20 +1,21 @@
 {
-    "version": 2,
-    "builds": [
-      {
-        "src": "dist/app.js",
-        "use": "@vercel/node"
-      }
-    ],
-    "routes": [
-      {
-        "src": "/(.*)",
-        "dest": "dist/app.js"
-      }
-    ],
-    "build": {
-      "env": {
-        "NODE_ENV": "production"
-      }
+  "version": 2,
+  "builds": [
+    {
+      "src": "dist/app.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "dist/app.js",
+      "maxDuration": 20
+    }
+  ],
+  "build": {
+    "env": {
+      "NODE_ENV": "production"
     }
   }
+}
