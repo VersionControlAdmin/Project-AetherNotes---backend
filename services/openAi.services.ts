@@ -53,7 +53,8 @@ Format the response as a structured plan with clear sections for immediate actio
 
   const completion = await openai.chat.completions.create({
     messages: [{ role: "user", content: prompt }],
-    model: "gpt-4o-mini", // Using the specified 4.0 model
+    model: "gpt-4o-mini",
+    max_tokens = 500 // Using the specified 4.0 model
   });
   return completion.choices[0].message.content;
 }
