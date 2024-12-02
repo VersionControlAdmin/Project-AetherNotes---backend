@@ -10,7 +10,7 @@ export async function summarizeNote(
 ): Promise<string> {
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
@@ -35,26 +35,22 @@ export async function summarizeNote(
 
 export async function generateActionPlan(notes: any[]) {
   const notesContext = notes
-    .map((note) => `Title: ${note.title}\nContent: ${note.content}`)
+    .map(({title, content}) => `Title: ${title}\nContent: ${content}`)
     .join("\n\n");
 
-  const prompt = `Based on the following notes, create a structured action plan with timeline:
-
-${notesContext}
-
-Please create a detailed action plan that:
-1. Identifies key tasks and priorities
-2. Suggests a realistic timeline for completion
-3. Groups related tasks together
-4. Highlights any dependencies between tasks
-5. Provides estimated time requirements
-
-Format the response as a structured plan with clear sections for immediate actions (next 7 days), short-term goals (next 30 days), and longer-term objectives. Be very to the point.`;
+  const prompt = `Create a concise action plan from these notes:\n\n${notesContext}\n\n
+Format as:
+- Next 7 days: [tasks with time estimates]
+- Next 30 days: [tasks with dependencies]
+- Long-term: [key objectives]
+Be brief and specific.`;
 
   const completion = await openai.chat.completions.create({
     messages: [{ role: "user", content: prompt }],
     model: "gpt-4o-mini",
-    max_tokens = 500 // Using the specified 4.0 model
+    max_tokens: 500,
+    temperature: 0.7,
   });
+  
   return completion.choices[0].message.content;
 }
