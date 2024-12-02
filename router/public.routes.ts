@@ -54,7 +54,9 @@ router.post(
   "/notes",
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const notes: NoteInput[] = Array.isArray(req.body) ? req.body : [req.body];
+      const notes: NoteInput[] = Array.isArray(req.body)
+        ? req.body
+        : [req.body];
 
       const createdNotes = await Promise.all(
         notes.map(({ title, content, tags = [] }) =>
@@ -230,7 +232,6 @@ router.get("/tags", async (req: Request, res: Response, next: NextFunction) => {
 
 // Generate action plan from recent public notes
 router.get("/generate-action-plan", async (req: Request, res: Response) => {
-  console.log("Generating public action plan");
 
   try {
     // Get the 20 most recent public notes
@@ -251,11 +252,9 @@ router.get("/generate-action-plan", async (req: Request, res: Response) => {
       res.status(404).json({ error: "No public notes found" });
       return;
     }
-
     const actionPlan = await generateActionPlan(recentNotes);
     res.json(actionPlan);
   } catch (error) {
-    console.error("Error generating public action plan:", error);
     res.status(500).json({ error: "Failed to generate action plan" });
   }
 });

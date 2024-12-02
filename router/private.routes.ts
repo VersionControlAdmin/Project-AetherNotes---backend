@@ -225,13 +225,7 @@ router.put("/notes/:id/tags", async (req: Request, res: Response) => {
 
 // Generate action plan from recent notes
 router.get("/generate-action-plan", async (req: Request, res: Response) => {
-  console.log(
-    "Generating action plan & current time:",
-    new Date().toISOString()
-  );
   const userId = BigInt(req.user!.userId);
-  console.log("User ID & current time:", userId, new Date().toISOString());
-
   try {
     // Get the 20 most recent notes for the user
     const recentNotes = await prisma.note.findMany({
@@ -251,15 +245,7 @@ router.get("/generate-action-plan", async (req: Request, res: Response) => {
       res.status(404).json({ error: "No notes found" });
       return;
     }
-    console.log(
-      "Transmitting notes to OpenAI & current time:",
-      new Date().toISOString()
-    );
     const actionPlan = await generateActionPlan(recentNotes);
-    console.log(
-      "Received action plan from OpenAI & current time:",
-      new Date().toISOString()
-    );
     res.json(actionPlan);
   } catch (error) {
     console.error("Error generating action plan:", error);
